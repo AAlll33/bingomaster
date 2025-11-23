@@ -131,13 +131,14 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-        /**
-     * URL BASE DE GITHUB PARA LAS CARTAS (CORRECCIÓN APLICADA)
-     * Se usa 'Bingomaster' que coincide con el nombre de repositorio visible en la URL de GitHub.
-     * Esto construirá la URL de la imagen como: 
-     * https://raw.githubusercontent.com/aallii33/bingomaster/main/carta_001.png
+    /**
+     * URL BASE DE GITHUB PARA LAS CARTAS (CORRECCIÓN CLAVE)
+     * Utiliza el formato raw.githubusercontent.com para acceder directamente a los archivos.
+     * Repositorio: AAlll33/bingomaster
+     * Rama: main
+     * Carpeta: bingo-cards
      */
-    const GITHUB_CARDS_BASE_URL = "https://github.com/AAlll33/bingomaster/tree/main/bingo-cards"; 
+    const GITHUB_CARDS_BASE_URL = "https://raw.githubusercontent.com/AAlll33/bingomaster/main/bingo-cards/carta_"; 
 
     
     // Lucide Icons (se importan como componentes React)
@@ -188,6 +189,7 @@
             {/* Muestra la imagen del cartón */}
             <img 
                 id="card-image"
+                // El cardUrl ahora viene corregido de la DB
                 src={player.cardUrl} 
                 alt={`Cartón de Bingo #${player.id} de ${player.name}`} 
                 className="w-full h-auto rounded-lg shadow-lg border-2 border-slate-200 mx-auto max-w-xl"
@@ -228,7 +230,8 @@
 
       // Admin Action States
       const [newName, setNewName] = useState('');
-      const [newId, setNewId] = useState('');
+      // Inicializamos en '001'
+      const [newId, setNewId] = useState('001'); 
       const [loading, setLoading] = useState(false);
       const [actionLoading, setActionLoading] = useState(false);
 
@@ -261,11 +264,12 @@
               playersList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
               setPlayers(playersList);
               
-              // Calcular siguiente ID
+              // Calcular siguiente ID (máximo 999)
               if(playersList.length > 0) {
                   const lastId = Math.max(...playersList.map(p => parseInt(p.id)));
-                  // Se usa padStart(4, '0') porque el ID de la carta debe coincidir (carta_0001.png)
-                  setNewId(String(lastId + 1).padStart(3, '0'));
+                  const nextId = lastId < 999 ? lastId + 1 : 1; // Resetea a 1 si llega a 999 (o se detiene si prefieres)
+                  // Se usa padStart(3, '0') porque el ID de la carta debe coincidir (carta_001.png)
+                  setNewId(String(nextId).padStart(3, '0'));
               } else {
                   setNewId('001');
               }
@@ -286,20 +290,34 @@
 
       const handleSearch = async (e) => {
         e.preventDefault();
-        const formattedCode = searchCode.padStart(3, '0');
-        if(!formattedCode || formattedCode.length > 3) return;
+        
+        // --- CORRECCIÓN 1: Normaliza el código de búsqueda a 3 dígitos ---
+        const rawCode = searchCode.replace(/[^0-9]/g, ''); // Limpiar no números
+        if(!rawCode) {
+            showMessage('Por favor, ingresa un número de cartón.');
+            return;
+        }
+        // Usar padStart(3, '0') para buscar "1" como "001"
+        const formattedCode = rawCode.padStart(3, '0');
+        if(formattedCode.length > 3) {
+             showMessage('El número de cartón no puede ser mayor a 999.');
+             return;
+        }
+        
         setLoading(true);
         setFoundPlayer(null);
 
         try {
+          // El ID del documento en Firebase es "001", "012", "334", etc.
           const docRef = doc(db, "players", formattedCode);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
+            // El jugador encontrado ya tendrá la URL de la carta correcta
             setFoundPlayer(docSnap.data());
             setActiveTab('result');
           } else {
-             showMessage('❌ No encontramos ese número de cartón.');
+             showMessage(`❌ No encontramos el cartón #${formattedCode}.`);
           }
         } catch (error) {
           console.error("Error buscando:", error);
@@ -328,13 +346,20 @@
 
       const handleCreatePlayer = async (e) => {
         e.preventDefault();
-        // Aseguramos que el ID tenga 3 dígitos
-        const formattedId = newId.padStart(3, '0');
+        
+        // --- CORRECCIÓN 2: Asegurar y validar el ID a 3 dígitos ---
+        const rawId = newId.replace(/[^0-9]/g, ''); // Limpiar
+        if(!rawId || rawId > 999 || rawId < 1) {
+             showMessage("El número de cartón debe ser entre 001 y 999.");
+             return;
+        }
+        const formattedId = rawId.padStart(3, '0');
+        
         if(!newName || !formattedId) return;
         
-        // El nombre del archivo usa el ID con ceros
-        const cardFileName = `carta_${formattedId}.png`; 
-        const cardUrl = GITHUB_CARDS_BASE_URL + cardFileName; // Construye el URL completo
+        // --- CORRECCIÓN 3: Construcción de la URL de la carta ---
+        // Usa la URL base corregida + ID formateado + extensión .png
+        const cardUrl = `${GITHUB_CARDS_BASE_URL}${formattedId}.png`; 
         
         setActionLoading(true);
 
@@ -352,7 +377,7 @@
             id: formattedId,
             name: newName,
             createdAt: new Date().toISOString(),
-            // Guardamos la URL
+            // Guardamos la URL CORRECTA
             cardUrl: cardUrl 
           });
           setNewName('');
@@ -376,7 +401,6 @@
         }
       };
 
-      // NOTA: handlePrint ya no es necesario aquí, se hace con window.print() en FullTicket
 
       return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-200">
@@ -418,9 +442,10 @@
                   <input 
                     type="text" 
                     value={searchCode}
-                    onChange={(e) => setSearchCode(e.target.value)}
-                    placeholder="001"
-                    maxLength={3}
+                    // Permite hasta 3 dígitos, pero acepta 1, 2 o 3. La lógica de búsqueda lo formatea a 3.
+                    onChange={(e) => setSearchCode(e.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="001 a 999"
+                    maxLength={3} 
                     className="w-full p-4 bg-transparent outline-none text-2xl font-black text-slate-800 placeholder:text-slate-300 font-mono"
                   />
                   <button 
@@ -494,16 +519,17 @@
                         </h3>
                         <form onSubmit={handleCreatePlayer} className="space-y-4">
                           <div>
-                            <label className="text-xs font-bold text-slate-400">NÚMERO DE CARTÓN</label>
+                            <label className="text-xs font-bold text-slate-400">NÚMERO DE CARTÓN (1 a 999)</label>
                             <input 
                               type="text" 
                               value={newId}
-                              onChange={(e) => setNewId(e.target.value.replace(/[^0-9]/g, ''))} // Solo números
+                              // Solo números, máximo 3 caracteres (aunque la lógica de create valida 999)
+                              onChange={(e) => setNewId(e.target.value.replace(/[^0-9]/g, ''))} 
                               maxLength={3}
                               placeholder="001"
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono font-bold text-indigo-700"
                             />
-                            <p className="text-xs text-slate-500 mt-1">Debe coincidir con el número de la imagen (ej. '001' busca 'carta_001.png').</p>
+                            <p className="text-xs text-slate-500 mt-1">Debe ser un número de 1 a 999.</p>
                           </div>
                           <div>
                             <label className="text-xs font-bold text-slate-400">NOMBRE CLIENTE</label>
