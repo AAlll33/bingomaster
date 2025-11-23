@@ -333,9 +333,8 @@
         if(!newName || !formattedId) return;
         
         // El nombre del archivo en la carpeta 'cartas' de GitHub
-        const cardIndex = parseInt(formattedId, 10);
-        // El formato de nombre es: carta_1.png, carta_2.png, etc.
-        const cardFileName = `carta_${cardIndex}.png`; 
+        // **CORRECCIÓN APLICADA AQUÍ:** Usamos formattedId directamente
+        const cardFileName = `carta_${formattedId}.png`; 
         const cardUrl = GITHUB_CARDS_BASE_URL + cardFileName; // Construye el URL completo
         
         setActionLoading(true);
@@ -505,7 +504,7 @@
                               placeholder="001"
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono font-bold text-indigo-700"
                             />
-                            <p className="text-xs text-slate-500 mt-1">Debe coincidir con el número de la imagen (ej. '001' busca 'carta_1.png').</p>
+                            <p className="text-xs text-slate-500 mt-1">Debe coincidir con el número de la imagen (ej. '001' busca 'carta_001.png').</p>
                           </div>
                           <div>
                             <label className="text-xs font-bold text-slate-400">NOMBRE CLIENTE</label>
