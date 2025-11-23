@@ -137,7 +137,7 @@
      * Esto construirá la URL de la imagen como: 
      * https://raw.githubusercontent.com/aallii33/bingomaster/main/carta_001.png
      */
-    const GITHUB_CARDS_BASE_URL = "https://raw.githubusercontent.com/aallii33/bingomaster/main/"; 
+    const GITHUB_CARDS_BASE_URL = "https://github.com/AAlll33/bingomaster/tree/main/bingo-cards"; 
 
     
     // Lucide Icons (se importan como componentes React)
@@ -162,7 +162,7 @@
       // Si player.cardUrl existe, lo usamos.
       if (!player || !player.cardUrl) return null;
       
-      const fileName = `carton_${player.id}_${player.name.replace(/\s/g, '_')}.png`;
+      const fileName = `carta_${player.id}_${player.name.replace(/\s/g, '_')}.png`;
 
       const handleDownload = () => {
         // Crea un enlace temporal para forzar la descarga
