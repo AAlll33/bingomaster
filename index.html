@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OMEGA Bingo</title>
-    <!-- Tailwind CSS (Simplificado) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React y Babel (Necesarios para ejecutar JSX en el navegador) -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Firebase SDKs -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
       import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, where, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -59,7 +56,6 @@
       }
     </script>
 
-    <!-- Estilo de impresión para el cartón -->
     <style>
         /* Estilos específicos para la impresión */
         @media print {
@@ -68,7 +64,7 @@
                 visibility: hidden;
             }
             /* Muestra el contenedor del ticket y todo su contenido */
-            #root, #root * {
+            #root, #bingo-ticket-export, #bingo-ticket-export * {
                 visibility: visible;
             }
             #root {
@@ -83,9 +79,11 @@
             .no-print {
                 display: none !important;
             }
-            /* Ajusta el tamaño de la cuadrícula para impresión */
-            .bingo-grid {
-                width: 100%;
+            /* Asegura que la imagen de la carta se vea correctamente al imprimir */
+            #card-image {
+                width: 100%; 
+                height: auto;
+                max-width: 800px; /* Limita un poco el ancho para impresión */
             }
         }
         /* Estilos para el efecto de carga */
@@ -104,7 +102,6 @@
     </style>
 </head>
 <body class="bg-slate-50 font-sans">
-    <!-- Contenedor donde React renderizará la aplicación -->
     <div id="root">
         <div class="h-screen flex items-center justify-center">
             <div class="spinner"></div>
@@ -112,7 +109,6 @@
         </div>
     </div>
 
-    <!-- Script de la Aplicación (AQUÍ VA TU CÓDIGO REACT/JSX) -->
     <script type="text/babel">
     const { useState, useEffect, createElement } = React;
     
@@ -137,6 +133,13 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    /**
+     * URL BASE DE GITHUB PARA LAS CARTAS
+     * Reemplaza 'aallii33' y 'Bingomaster' con tu usuario y nombre de repositorio si son diferentes
+     * Nota: La carpeta 'cartas' debe existir en la raíz del repositorio.
+     */
+    const GITHUB_CARDS_BASE_URL = "https://raw.githubusercontent.com/aallii33/Bingomaster/main/cartas/";
+    
     // Lucide Icons (se importan como componentes React)
     const Search = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('circle', { cx: 11, cy: 11, r: 8 }), createElement('path', { d: "m21 21-4.3-4.3" }));
     const UserPlus = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('path', { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }), createElement('circle', { cx: 9, cy: 7, r: 4 }), createElement('line', { x1: 19, y1: 8, x2: 19, y2: 14 }), createElement('line', { x1: 22, y1: 11, x2: 16, y2: 11 }));
@@ -149,90 +152,27 @@
     const Printer = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('polyline', { points: "6 9 6 2 18 2 18 9" }), createElement('path', { d: "M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" }), createElement('rect', { width: 12, height: 8, x: 6, y: 14 }), createElement('line', { x1: 12, y1: 14, x2: 12, y2: 22 }));
     const Lock = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('rect', { width: 18, height: 11, x: 3, y: 11, rx: 2, ry: 2 }), createElement('path', { d: "M7 11V7a5 5 0 0 1 10 0v4" }));
     const Loader2 = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('path', { d: "M21 12a9 9 0 1 1-6.219-8.56" }));
+    const Download = (props) => createElement('svg', { ...props, xmlns: "http://www.w3.org/2000/svg", width: props.size || 24, height: props.size || 24, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", className: props.className || "" }, createElement('path', { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), createElement('polyline', { points: "7 10 12 15 17 10" }), createElement('line', { x1: 12, y1: 15, x2: 12, y2: 3 }));
 
 
     /**
-     * LOGICA DEL BINGO (Generador Matemático)
+     * COMPONENTE: FullTicket (Muestra el PNG en lugar de la cuadrícula)
      */
-    const generateBingoMatrix = () => {
-      const getUniqueNumbers = (min, max, count) => {
-        const nums = new Set();
-        while (nums.size < count) {
-          nums.add(Math.floor(Math.random() * (max - min + 1)) + min);
-        }
-        return Array.from(nums).sort((a, b) => a - b); // Ordenar para mejor visualización
-      };
-      return {
-        B: getUniqueNumbers(1, 15, 5),
-        I: getUniqueNumbers(16, 30, 5),
-        N: getUniqueNumbers(31, 45, 4), // 4 números + el Free
-        G: getUniqueNumbers(46, 60, 5),
-        O: getUniqueNumbers(61, 75, 5),
-      };
-    };
-
-    /**
-     * COMPONENTES VISUALES
-     */
-    const BingoGrid = ({ numbers, colorTheme }) => {
-      const { B, I, N, G, O } = numbers;
-      const letters = ['B', 'I', 'N', 'G', 'O'];
-      const headerColors = {
-        blue: ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-purple-500'],
-        purple: ['bg-pink-500', 'bg-purple-500', 'bg-indigo-500', 'bg-blue-500', 'bg-cyan-500']
-      };
-      const currentTheme = headerColors[colorTheme] || headerColors.blue;
-
-      // Unir todas las columnas en un solo array para mapear filas
-      const columns = [B, I, N, G, O];
-
-      return (
-        <div className="bingo-grid bg-white p-2 rounded-lg border-2 border-slate-200 shadow-sm">
-          <div className="grid grid-cols-5 gap-1 text-center mb-1">
-            {letters.map((l, i) => (
-              <div key={l} className={`${currentTheme[i]} text-white font-black text-sm sm:text-lg rounded h-6 sm:h-8 flex items-center justify-center shadow-sm`}>
-                {l}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-5 gap-1 text-center font-bold text-slate-800 text-sm sm:text-base">
-            {[0, 1, 2, 3, 4].map((row) => (
-              <React.Fragment key={row}>
-                {columns.map((col, colIndex) => {
-                  let content;
-                  let cellClass = "h-6 sm:h-8 flex items-center justify-center bg-slate-50 rounded border border-slate-100";
-                  
-                  // Columna N (índice 2) y Fila 2 (índice 2) es el espacio libre
-                  if (colIndex === 2 && row === 2) {
-                    content = <Sparkles size={14} className="text-white" />;
-                    cellClass = "h-6 sm:h-8 flex items-center justify-center bg-yellow-400 rounded-full border-2 border-yellow-200";
-                  } else {
-                    // Manejar la columna N que solo tiene 4 números
-                    let number;
-                    if (colIndex === 2) {
-                      number = row < 2 ? col[row] : col[row - 1];
-                    } else {
-                      number = col[row];
-                    }
-                    content = number;
-                  }
-
-                  return (
-                    <div key={colIndex} className={cellClass}>
-                      {content}
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      );
-    };
-
     const FullTicket = ({ player }) => {
-      // Asegurar que player y player.grids existan
-      if (!player || !player.grids || player.grids.length < 2) return null;
+      // Si player.cardUrl existe, lo usamos.
+      if (!player || !player.cardUrl) return null;
+      
+      const fileName = `carton_${player.id}_${player.name.replace(/\s/g, '_')}.png`;
+
+      const handleDownload = () => {
+        // Crea un enlace temporal para forzar la descarga
+        const link = document.createElement('a');
+        link.href = player.cardUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
 
       return (
         <div id="bingo-ticket-export" className="bg-white p-4 sm:p-6 rounded-3xl shadow-2xl max-w-3xl mx-auto border-t-8 border-indigo-600 relative overflow-hidden">
@@ -243,19 +183,29 @@
             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 uppercase">GRAN BINGO <span className="text-indigo-600">MASTER</span></h2>
             <p className="text-slate-500 font-medium text-lg mt-1 uppercase">{player.name}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-            <div className="relative">
-              <div className="absolute -top-3 -left-2 bg-yellow-400 text-yellow-900 font-bold w-8 h-8 flex items-center justify-center rounded-full border-2 border-white shadow-lg z-20 text-xs">01</div>
-              <BingoGrid numbers={player.grids[0]} colorTheme="blue" />
-            </div>
-            <div className="relative">
-              <div className="absolute -top-3 -right-2 bg-yellow-400 text-yellow-900 font-bold w-8 h-8 flex items-center justify-center rounded-full border-2 border-white shadow-lg z-20 text-xs">02</div>
-              <BingoGrid numbers={player.grids[1]} colorTheme="purple" />
-            </div>
+          
+          <div className="relative z-10 text-center">
+            {/* Muestra la imagen del cartón */}
+            <img 
+                id="card-image"
+                src={player.cardUrl} 
+                alt={`Cartón de Bingo #${player.id} de ${player.name}`} 
+                className="w-full h-auto rounded-lg shadow-lg border-2 border-slate-200 mx-auto max-w-xl"
+            />
           </div>
+          
           <div className="mt-6 pt-4 border-t border-dashed border-slate-300 flex justify-between items-center text-xs text-slate-400">
             <span>Generado automáticamente</span>
             <span className="flex items-center gap-1"><Check size={12} /> Verificado</span>
+          </div>
+          
+          <div className="flex justify-center gap-4 mt-6 no-print">
+            <button onClick={handleDownload} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 hover:bg-green-700 transition-colors">
+                <Download size={18} /> Descargar PNG
+            </button>
+            <button onClick={window.print} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 hover:bg-indigo-700 transition-colors">
+                <Printer size={18} /> Imprimir Cartón
+            </button>
           </div>
         </div>
       );
@@ -282,6 +232,13 @@
       const [loading, setLoading] = useState(false);
       const [actionLoading, setActionLoading] = useState(false);
 
+      // Función para mostrar mensajes temporales
+      const showMessage = (message) => {
+           document.getElementById('modal-message').innerText = message;
+           document.getElementById('error-modal').classList.remove('hidden');
+           setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+      };
+      
       // 1. Escuchar Autenticación
       useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -298,7 +255,7 @@
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
               const playersList = [];
               querySnapshot.forEach((doc) => {
-                playersList.push({ id: doc.id, ...doc.data() }); // Incluir doc.id por si lo necesitamos
+                playersList.push({ id: doc.id, ...doc.data() }); 
               });
               // Ordenar por ID
               playersList.sort((a, b) => parseInt(a.id) - parseInt(b.id));
@@ -307,6 +264,7 @@
               // Calcular siguiente ID
               if(playersList.length > 0) {
                   const lastId = Math.max(...playersList.map(p => parseInt(p.id)));
+                  // Se usa padStart(4, '0') porque el ID de la carta debe coincidir (carta_0001.png)
                   setNewId(String(lastId + 1).padStart(3, '0'));
               } else {
                   setNewId('001');
@@ -315,12 +273,11 @@
             return () => unsubscribe();
           } catch (e) {
             console.error("Error al suscribirse a Firestore:", e);
-            // Mostrar un error al admin si falla la conexión
             setAuthError("Error de conexión con la base de datos. Revisa la consola o las reglas de seguridad.");
-            return () => {}; // Devuelve una función vacía si hubo error
+            return () => {}; 
           }
         } else {
-            setPlayers([]); // Limpiar si no es admin
+            setPlayers([]); 
             return () => {};
         }
       }, [user, activeTab]);
@@ -329,7 +286,6 @@
 
       const handleSearch = async (e) => {
         e.preventDefault();
-        // El ID debe ser un número de 3 dígitos (ej: '001')
         const formattedCode = searchCode.padStart(3, '0');
         if(!formattedCode || formattedCode.length > 3) return;
         setLoading(true);
@@ -343,16 +299,11 @@
             setFoundPlayer(docSnap.data());
             setActiveTab('result');
           } else {
-             // Usar un modal simple o un div de error en lugar de alert()
-             document.getElementById('modal-message').innerText = '❌ No encontramos ese número de cartón.';
-             document.getElementById('error-modal').classList.remove('hidden');
-             setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+             showMessage('❌ No encontramos ese número de cartón.');
           }
         } catch (error) {
           console.error("Error buscando:", error);
-           document.getElementById('modal-message').innerText = "Error de conexión. Intenta más tarde.";
-           document.getElementById('error-modal').classList.remove('hidden');
-           setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+          showMessage("Error de conexión. Intenta más tarde.");
         }
         setLoading(false);
       };
@@ -377,12 +328,19 @@
 
       const handleCreatePlayer = async (e) => {
         e.preventDefault();
+        // Aseguramos que el ID tenga 3 dígitos
         const formattedId = newId.padStart(3, '0');
         if(!newName || !formattedId) return;
+        
+        // El nombre del archivo en la carpeta 'cartas' de GitHub
+        const cardIndex = parseInt(formattedId, 10);
+        // El formato de nombre es: carta_1.png, carta_2.png, etc.
+        const cardFileName = `carta_${cardIndex}.png`; 
+        const cardUrl = GITHUB_CARDS_BASE_URL + cardFileName; // Construye el URL completo
+        
         setActionLoading(true);
 
         try {
-          // Primero, verificar si el ID ya existe para evitar sobrescribir accidentalmente
           const docRef = doc(db, "players", formattedId);
           const docSnap = await getDoc(docRef);
 
@@ -396,19 +354,16 @@
             id: formattedId,
             name: newName,
             createdAt: new Date().toISOString(),
-            grids: [generateBingoMatrix(), generateBingoMatrix()]
+            // **CAMBIO CLAVE: Guardamos la URL en lugar de generar la matriz**
+            cardUrl: cardUrl 
           });
           setNewName('');
           // El ID se recalculará con el onSnapshot
-          document.getElementById('modal-message').innerText = `✅ Cartón #${formattedId} creado/actualizado para ${newName}`;
-          document.getElementById('error-modal').classList.remove('hidden');
-          setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+          showMessage(`✅ Cartón #${formattedId} creado/actualizado para ${newName}`);
           
         } catch (error) {
           console.error("Error creando:", error);
-           document.getElementById('modal-message').innerText = "Error al guardar en base de datos. Revisa las reglas de 'write'.";
-           document.getElementById('error-modal').classList.remove('hidden');
-           setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+          showMessage("Error al guardar en base de datos. Revisa las reglas de 'write'.");
         }
         setActionLoading(false);
       };
@@ -418,14 +373,12 @@
           try {
             await deleteDoc(doc(db, "players", id));
           } catch (error) {
-             document.getElementById('modal-message').innerText = "Error al eliminar. Revisa las reglas de seguridad.";
-             document.getElementById('error-modal').classList.remove('hidden');
-             setTimeout(() => document.getElementById('error-modal').classList.add('hidden'), 3000);
+             showMessage("Error al eliminar. Revisa las reglas de seguridad.");
           }
         }
       };
 
-      const handlePrint = () => window.print();
+      // NOTA: handlePrint ya no es necesario aquí, se hace con window.print() en FullTicket
 
       return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-200">
@@ -493,9 +446,7 @@
                   <button onClick={() => { setActiveTab('home'); setFoundPlayer(null); }} className="flex items-center gap-2 text-slate-500 hover:text-slate-800">
                     <X size={18} /> Cerrar Búsqueda
                   </button>
-                  <button onClick={handlePrint} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 hover:bg-indigo-700">
-                    <Printer size={18} /> Imprimir Cartón
-                  </button>
+                  {/* Los botones de Imprimir y Descargar ahora están dentro de FullTicket */}
                 </div>
                 <FullTicket player={foundPlayer} />
               </div>
@@ -554,6 +505,7 @@
                               placeholder="001"
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono font-bold text-indigo-700"
                             />
+                            <p className="text-xs text-slate-500 mt-1">Debe coincidir con el número de la imagen (ej. '001' busca 'carta_1.png').</p>
                           </div>
                           <div>
                             <label className="text-xs font-bold text-slate-400">NOMBRE CLIENTE</label>
