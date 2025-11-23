@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Master PRO</title>
+    <title>Bingo Master PRO - [NOMBRE DEL CLIENTE]</title>
     <!-- Tailwind CSS (Simplificado) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React y Babel (Necesarios para ejecutar JSX en el navegador) -->
@@ -118,17 +118,21 @@
     
     /**
      * ------------------------------------------------------------------
-     * CONFIGURACIÓN DE FIREBASE (¡IMPORTANTE!)
-     * Usando las credenciales que proporcionaste.
+     * CONFIGURACIÓN DE FIREBASE (¡IMPORTANTE! ESTA SECCIÓN SE EDITA)
+     * ------------------------------------------------------------------
+     * PASO 1: Cuando crees un nuevo proyecto en Firebase para tu cliente,
+     * pega aquí su objeto de configuración completo.
      * ------------------------------------------------------------------
      */
     const firebaseConfig = {
+      // ** REEMPLAZAR AQUÍ CON LA CONFIGURACIÓN DEL NUEVO CLIENTE **
       apiKey: "AIzaSyD4VZzcRuyvECR_E5WWY-P4vNjkKTZ5RjA",
       authDomain: "bingomaster-858d3.firebaseapp.com",
       projectId: "bingomaster-858d3",
       storageBucket: "bingomaster-858d3.firebasestorage.app",
       messagingSenderId: "219714758222",
       appId: "1:219714758222:web:3f739569de1aec4233451f"
+      // ** FIN DEL BLOQUE DE CONFIGURACIÓN DEL CLIENTE **
     };
 
     // Inicializamos Firebase y obtenemos las instancias de DB y Auth
@@ -294,6 +298,9 @@
       useEffect(() => {
         if (user && activeTab === 'admin') {
           try {
+            // Regla 1: Solo el usuario administrador (uid) debe poder acceder a esta data
+            // Esto requiere una regla de seguridad en Firestore que valide:
+            // allow read: if request.auth.uid == 'TU_UID_ADMIN';
             const q = query(collection(db, "players"));
             const unsubscribe = onSnapshot(q, (querySnapshot) => {
               const playersList = [];
@@ -336,6 +343,9 @@
         setFoundPlayer(null);
 
         try {
+          // Regla 2: La lectura individual del cartón NO requiere autenticación.
+          // Esto requiere una regla de seguridad en Firestore que valide:
+          // match /players/{playerId} { allow read: true; }
           const docRef = doc(db, "players", formattedCode);
           const docSnap = await getDoc(docRef);
 
@@ -361,6 +371,8 @@
         e.preventDefault();
         setAuthError('');
         setLoading(true);
+        // NOTA IMPORTANTE: Para que esto funcione, debes crear un usuario
+        // en Firebase Authentication con este email/password ANTES de usarlo.
         try {
           await signInWithEmailAndPassword(auth, email, password);
           setActiveTab('admin');
@@ -386,7 +398,7 @@
           const docRef = doc(db, "players", formattedId);
           const docSnap = await getDoc(docRef);
 
-          if (docSnap.exists() && !confirm(`El cartón #${formattedId} ya existe para ${docSnap.data().name}. ¿Quieres sobrescribirlo?`)) {
+          if (docSnap.exists() && !window.confirm(`El cartón #${formattedId} ya existe para ${docSnap.data().name}. ¿Quieres sobrescribirlo?`)) {
               setActionLoading(false);
               return;
           }
@@ -441,13 +453,19 @@
               </div>
 
               {user ? (
-                 <button onClick={handleLogout} className="text-sm font-medium text-red-500 flex items-center gap-1">
-                   <LogOut size={16}/> Salir
+                 <button onClick={() => setActiveTab('admin')} className="text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center gap-1">
+                    <Lock size={16}/> ADMIN
                  </button>
               ) : (
                 <button onClick={() => setActiveTab('admin')} className="text-sm font-medium text-slate-500 hover:text-indigo-600 flex items-center gap-1">
                   <Lock size={16}/> Admin
                 </button>
+              )}
+              
+              {user && (
+                 <button onClick={handleLogout} className="text-sm font-medium text-red-500 flex items-center gap-1">
+                   <LogOut size={16}/> Salir
+                 </button>
               )}
             </div>
           </nav>
